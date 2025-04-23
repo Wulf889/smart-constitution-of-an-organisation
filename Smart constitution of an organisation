@@ -1,0 +1,36 @@
+pragma solidity ^0.8.20;
+
+contract SmartConstitution {
+    address public owner;
+    mapping(address => bool) public boardMembers;
+    string public constitutionText;
+
+    event ConstitutionUpdated(string newText);
+    event BoardMemberUpdated(address member, bool status);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not authorized");
+        _;
+    }
+
+    modifier onlyBoardMember() {
+        require(boardMembers[msg.sender], "Not a board member");
+        _;
+    }
+
+    constructor(string memory _initialText) {
+        owner = msg.sender;
+        constitutionText = _initialText;
+        boardMembers[msg.sender] = true;
+    }
+
+    function updateConstitution(string memory _newText) public onlyBoardMember {
+        constitutionText = _newText;
+        emit ConstitutionUpdated(_newText);
+    }
+
+    function setBoardMember(address _member, bool _status) public onlyOwner {
+        boardMembers[_member] = _status;
+        emit BoardMemberUpdated(_member, _status);
+    }
+}
