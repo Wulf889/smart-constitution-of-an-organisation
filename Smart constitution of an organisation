@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 contract SmartConstitution {
@@ -7,6 +8,7 @@ contract SmartConstitution {
 
     event ConstitutionUpdated(string newText);
     event BoardMemberUpdated(address member, bool status);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not authorized");
@@ -29,8 +31,22 @@ contract SmartConstitution {
         emit ConstitutionUpdated(_newText);
     }
 
-    function setBoardMember(address _member, bool _status) public onlyOwner {
+    function updateBoardMember(address _member, bool _status) public onlyOwner {
         boardMembers[_member] = _status;
         emit BoardMemberUpdated(_member, _status);
+    }
+
+    function transferOwnership(address _newOwner) public onlyOwner {
+        require(_newOwner != address(0), "Invalid new owner");
+        emit OwnershipTransferred(owner, _newOwner);
+        owner = _newOwner;
+    }
+
+    function getBoardMemberStatus(address _member) public view returns (bool) {
+        return boardMembers[_member];
+    }
+
+    function getConstitution() public view returns (string memory) {
+        return constitutionText;
     }
 }
