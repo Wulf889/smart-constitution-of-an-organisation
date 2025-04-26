@@ -6,9 +6,17 @@ contract SmartConstitution {
     mapping(address => bool) public boardMembers;
     string public constitutionText;
 
+    string public proposedText;
+    mapping(address => bool) public approvals;
+    uint public approvalCount;
+    bool public isProposalActive;
+
     event ConstitutionUpdated(string newText);
     event BoardMemberUpdated(address member, bool status);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event ProposalCreated(string proposedText);
+    event ProposalApproved(address approver);
+    event ProposalRejected(address rejector);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not authorized");
@@ -48,5 +56,80 @@ contract SmartConstitution {
 
     function getConstitution() public view returns (string memory) {
         return constitutionText;
+    }
+
+    // --- New Functions ---
+
+    function proposeNewConstitution(string memory _proposal) public onlyBoardMember {
+        require(!isProposalActive, "Active proposal already exists");
+        proposedText = _proposal;
+        isProposalActive = true;
+        approvalCount = 0;
+
+        // Reset all previous approvals
+        for (uint i = 0; i < boardList.length; i++) {
+            approvals[boardList[i]] = false;
+        }
+
+        emit ProposalCreated(_proposal);
+    }
+
+    function approveProposal() public onlyBoardMember {
+        require(isProposalActive, "No active proposal");
+        require(!approvals[msg.sender], "Already approved");
+
+        approvals[msg.sender] = true;
+        approvalCount++;
+
+        emit ProposalApproved(msg.sender);
+
+        // If more than 50% approve, update the constitution
+        if (approvalCount > boardList.length / 2) {
+            constitutionText = proposedText;
+            isProposalActive = false;
+            emit ConstitutionUpdated(proposedText);
+        }
+    }
+
+    function rejectProposal() public onlyBoardMember {
+        require(isProposalActive, "No active proposal");
+
+        isProposalActive = false;
+        proposedText = "";
+        approvalCount = 0;
+
+        emit ProposalRejected(msg.sender);
+    }
+
+    function getProposal() public view returns (string memory) {
+        require(isProposalActive, "No active proposal");
+        return proposedText;
+    }
+
+    // --- Helper for Board List ---
+
+    address[] public boardList;
+
+    function addBoardMember(address _member) public onlyOwner {
+        require(!boardMembers[_member], "Already a board member");
+        boardMembers[_member] = true;
+        boardList.push(_member);
+        emit BoardMemberUpdated(_member, true);
+    }
+
+    function removeBoardMember(address _member) public onlyOwner {
+        require(boardMembers[_member], "Not a board member");
+        boardMembers[_member] = false;
+
+        // Remove from boardList array
+        for (uint i = 0; i < boardList.length; i++) {
+            if (boardList[i] == _member) {
+                boardList[i] = boardList[boardList.length - 1];
+                boardList.pop();
+                break;
+            }
+        }
+
+        emit BoardMemberUpdated(_member, false);
     }
 }
